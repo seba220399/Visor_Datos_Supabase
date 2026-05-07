@@ -4,7 +4,7 @@ const APP_PASSWORD = import.meta.env.VITE_APP_PASSWORD ?? "";
 const AUTH_KEY = "visor_auth";
 
 function isAuthenticated() {
-  return !APP_PASSWORD || sessionStorage.getItem(AUTH_KEY) === "1";
+  return !APP_PASSWORD || localStorage.getItem(AUTH_KEY) === "1";
 }
 
 export function PasswordGate({ children }: { children: ReactNode }) {
@@ -20,7 +20,7 @@ export function PasswordGate({ children }: { children: ReactNode }) {
     event.preventDefault();
 
     if (input === APP_PASSWORD) {
-      sessionStorage.setItem(AUTH_KEY, "1");
+      localStorage.setItem(AUTH_KEY, "1");
       setAuthed(true);
     } else {
       setError(true);
