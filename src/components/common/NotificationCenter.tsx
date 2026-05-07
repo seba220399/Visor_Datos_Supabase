@@ -24,9 +24,30 @@ interface DatabaseNotification {
 
 const BATCH_WINDOW_MS = 1500;
 const BATCH_THRESHOLD = 4;
+const STORAGE_KEY = "visor_notifications";
+const MAX_STORED = 200;
+
+function loadStoredNotifications(): DatabaseNotification[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    return (JSON.parse(raw) as DatabaseNotification[]).map((n) => ({
+      ...n,
+      unread: false,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+function saveNotifications(list: DatabaseNotification[]) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list.slice(0, MAX_STORED)));
+  } catch {}
+}
 
 export function NotificationCenter() {
-  const [notifications, setNotifications] = useState<DatabaseNotification[]>([]);
+  const [notifications, setNotifications] = useState<DatabaseNotification[]>(loadStoredNotifications);
   const [isOpen, setIsOpen] = useState(false);
   const recentLocalSignaturesRef = useRef(new Map<string, number>());
   const pendingBatchRef = useRef<DatabaseNotification[]>([]);
@@ -149,6 +170,10 @@ export function NotificationCenter() {
     };
   }, []);
 
+  useEffect(() => {
+    saveNotifications(notifications);
+  }, [notifications]);
+
   const unreadCount = useMemo(
     () => notifications.filter((notification) => notification.unread).length,
     [notifications],
@@ -159,6 +184,10 @@ export function NotificationCenter() {
     setNotifications((current) =>
       current.map((notification) => ({ ...notification, unread: false })),
     );
+  }
+
+  function handleClearHistory() {
+    setNotifications([]);
   }
 
   if (supabaseConfigError) {
@@ -180,11 +209,18 @@ export function NotificationCenter() {
           title="Cambios recientes"
         >
           <div className="notifications-panel">
-            <p className="notes-meta">
-              {notifications.length > 0
-                ? `${notifications.length} cambio(s) registrado(s)`
-                : "Todavia no hay cambios detectados."}
-            </p>
+            <div className="notes-toolbar">
+              <p className="notes-meta">
+                {notifications.length > 0
+                  ? `${notifications.length} cambio(s) registrado(s)`
+                  : "Todavia no hay cambios detectados."}
+              </p>
+              {notifications.length > 0 ? (
+                <button className="button button-secondary button-small" onClick={handleClearHistory} type="button">
+                  Limpiar historial
+                </button>
+              ) : null}
+            </div>
 
             {notifications.length > 0 ? (
               <div className="notifications-list">
