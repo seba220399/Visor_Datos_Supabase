@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { AppLayout } from "./components/layout/AppLayout";
+import { PasswordGate } from "./components/common/PasswordGate";
 import { parseRoute, routeToHash, type BreadcrumbItem } from "./lib/navigation";
 import { supabaseConfigError } from "./lib/supabase";
 import { ProgramaDetailPage } from "./pages/ProgramaDetailPage";
@@ -78,12 +79,14 @@ export default function App() {
   }
 
   return (
-    <AppLayout
-      breadcrumbs={breadcrumbs}
-      onDismissStatus={() => setStatus(null)}
-      status={status}
-    >
-      {content}
-    </AppLayout>
+    <PasswordGate>
+      <AppLayout
+        breadcrumbs={breadcrumbs}
+        onDismissStatus={() => setStatus(null)}
+        status={status}
+      >
+        {content}
+      </AppLayout>
+    </PasswordGate>
   );
 }
