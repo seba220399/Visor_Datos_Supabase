@@ -112,7 +112,6 @@ export function NotificationCenter() {
     () => notifications.filter((notification) => notification.unread).length,
     [notifications],
   );
-  const visibleToasts = notifications.filter((notification) => !notification.dismissed).slice(0, 4);
 
   function handleOpenCenter() {
     setIsOpen(true);
@@ -124,56 +123,12 @@ export function NotificationCenter() {
     );
   }
 
-  function handleDismissToast(notificationId: string) {
-    setNotifications((current) =>
-      current.map((notification) =>
-        notification.id === notificationId
-          ? {
-              ...notification,
-              dismissed: true,
-            }
-          : notification,
-      ),
-    );
-  }
-
   if (supabaseConfigError) {
     return null;
   }
 
   return (
     <>
-      <button className="button button-secondary notifications-launcher" onClick={handleOpenCenter} type="button">
-        Cambios
-        {unreadCount > 0 ? <span className="notifications-count">{unreadCount}</span> : null}
-      </button>
-
-      <div className="notifications-toast-stack" aria-live="polite">
-        {visibleToasts.map((notification) => (
-          <article className="notification-toast" key={notification.id}>
-            <div className="notification-toast-copy">
-              <strong>{notification.title}</strong>
-              <p>{notification.message}</p>
-              <small>
-                {new Date(notification.createdAt).toLocaleString("es-CL", {
-                  year: "numeric",
-                  month: "2-digit",
-                  day: "2-digit",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </small>
-            </div>
-            <button
-              className="button button-secondary button-small"
-              onClick={() => handleDismissToast(notification.id)}
-              type="button"
-            >
-              Cerrar
-            </button>
-          </article>
-        ))}
-      </div>
 
       {isOpen ? (
         <Modal

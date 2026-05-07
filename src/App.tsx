@@ -48,6 +48,12 @@ export default function App() {
     }
   }, [route]);
 
+  useEffect(() => {
+    if (status?.tone !== "success") return;
+    const timer = window.setTimeout(() => setStatus(null), 4000);
+    return () => window.clearTimeout(timer);
+  }, [status]);
+
   let content = <ProgramasPage onStatus={(tone, message) => setStatus({ tone, message })} />;
 
   if (route.name === "programa") {

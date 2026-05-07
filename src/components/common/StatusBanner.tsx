@@ -8,7 +8,7 @@ export function StatusBanner({ tone, message, onClose }: StatusBannerProps) {
   return (
     <div className={`status-banner status-${tone}`} role="status">
       <span>{message}</span>
-      {onClose ? (
+      {onClose && tone !== "success" ? (
         <button className="status-close" onClick={onClose} type="button">
           Cerrar
         </button>
