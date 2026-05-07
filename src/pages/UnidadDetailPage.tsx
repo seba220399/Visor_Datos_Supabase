@@ -113,8 +113,8 @@ export function UnidadDetailPage({
     return data.actividades.filter((item) => item.evaluacion_id === selectedEvaluacionId);
   }, [data, selectedEvaluacionId]);
 
-  async function loadData() {
-    setLoading(true);
+  async function loadData(silent = false) {
+    if (!silent) setLoading(true);
 
     try {
       const nextData = await getUnidadHierarchy(unidadId);
@@ -134,7 +134,7 @@ export function UnidadDetailPage({
     } catch (error) {
       onStatus("error", getFriendlyErrorMessage(error, "cargar la unidad"));
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }
 
@@ -362,7 +362,7 @@ export function UnidadDetailPage({
         onStatus("success", "Registro actualizado.");
       }
 
-      await loadData();
+      await loadData(true);
     } catch (error) {
       throw new Error(getFriendlyErrorMessage(error, "guardar el registro"));
     }
@@ -397,7 +397,7 @@ export function UnidadDetailPage({
     try {
       await deleteEntity(entityKey, row.id, row);
       onStatus("success", "Registro eliminado.");
-      await loadData();
+      await loadData(true);
     } catch (error) {
       onStatus("error", getFriendlyErrorMessage(error, "eliminar el registro"));
     }

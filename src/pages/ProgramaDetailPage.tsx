@@ -53,8 +53,8 @@ export function ProgramaDetailPage({
     useState<ObjetivoAprendizajeRow | null>(null);
   const [markedObjetivoIds, setMarkedObjetivoIds] = useState<number[]>(() => getMarkedObjectiveIds());
 
-  async function loadData() {
-    setLoading(true);
+  async function loadData(silent = false) {
+    if (!silent) setLoading(true);
 
     try {
       const data = await getProgramaHierarchy(programaId);
@@ -67,7 +67,7 @@ export function ProgramaDetailPage({
     } catch (error) {
       onStatus("error", getFriendlyErrorMessage(error, "cargar el programa"));
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }
 
@@ -129,7 +129,7 @@ export function ProgramaDetailPage({
         );
       }
 
-      await loadData();
+      await loadData(true);
     } catch (error) {
       throw new Error(getFriendlyErrorMessage(error, "guardar los cambios"));
     }
@@ -147,7 +147,7 @@ export function ProgramaDetailPage({
     try {
       await deleteEntity("unidades", unidad.id, unidad);
       onStatus("success", "Unidad eliminada.");
-      await loadData();
+      await loadData(true);
     } catch (error) {
       onStatus("error", getFriendlyErrorMessage(error, "eliminar la unidad"));
     }

@@ -70,9 +70,9 @@ export function ProgramasPage({ onStatus }: ProgramasPageProps) {
 
   async function handleCreate(values: EntityPayload) {
     try {
-      await createEntity("programas", values);
+      const newRow = (await createEntity("programas", values)) as ProgramaRow;
       onStatus("success", "Programa creado.");
-      await loadProgramas();
+      setProgramas((current) => [newRow, ...current]);
     } catch (error) {
       throw new Error(getFriendlyErrorMessage(error, "crear el programa"));
     }
@@ -84,9 +84,9 @@ export function ProgramasPage({ onStatus }: ProgramasPageProps) {
     }
 
     try {
-      await updateEntity("programas", formState.editingId, values);
+      const updated = (await updateEntity("programas", formState.editingId, values)) as ProgramaRow;
       onStatus("success", "Programa actualizado.");
-      await loadProgramas();
+      setProgramas((current) => current.map((p) => (p.id === updated.id ? updated : p)));
     } catch (error) {
       throw new Error(getFriendlyErrorMessage(error, "actualizar el programa"));
     }
@@ -104,7 +104,7 @@ export function ProgramasPage({ onStatus }: ProgramasPageProps) {
     try {
       await deleteEntity("programas", programa.id, programa);
       onStatus("success", "Programa eliminado.");
-      await loadProgramas();
+      setProgramas((current) => current.filter((p) => p.id !== programa.id));
     } catch (error) {
       onStatus("error", getFriendlyErrorMessage(error, "eliminar el programa"));
     }

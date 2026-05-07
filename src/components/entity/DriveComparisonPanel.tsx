@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   downloadGoogleDrivePdf,
   filterDriveFiles,
@@ -27,6 +27,7 @@ export function DriveComparisonPanel({
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [fileSearchTerm, setFileSearchTerm] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const pdfCacheRef = useRef<Map<string, string>>(new Map());
 
   const visibleFiles = filterDriveFiles(driveFiles, fileSearchTerm);
   const selectedFile = driveFiles.find((item) => item.id === selectedFileId) ?? null;
@@ -61,13 +62,13 @@ export function DriveComparisonPanel({
 
   useEffect(() => {
     if (!selectedFileId) {
-      setPreviewUrl((currentUrl) => {
-        if (currentUrl) {
-          URL.revokeObjectURL(currentUrl);
-        }
+      setPreviewUrl(null);
+      return;
+    }
 
-        return null;
-      });
+    const cached = pdfCacheRef.current.get(selectedFileId);
+    if (cached) {
+      setPreviewUrl(cached);
       return;
     }
 
@@ -76,31 +77,18 @@ export function DriveComparisonPanel({
 
     void downloadGoogleDrivePdf(selectedFileId)
       .then((blob) => {
-        if (cancelled) {
-          return;
-        }
-
-        const nextPreviewUrl = URL.createObjectURL(blob);
-        setPreviewUrl((currentUrl) => {
-          if (currentUrl) {
-            URL.revokeObjectURL(currentUrl);
-          }
-
-          return nextPreviewUrl;
-        });
+        if (cancelled) return;
+        const nextUrl = URL.createObjectURL(blob);
+        pdfCacheRef.current.set(selectedFileId, nextUrl);
+        setPreviewUrl(nextUrl);
       })
       .catch((error) => {
-        if (cancelled) {
-          return;
-        }
-
+        if (cancelled) return;
         const message = error instanceof Error ? error.message : "No se pudo cargar la vista previa del PDF.";
         onStatus("error", message);
       })
       .finally(() => {
-        if (!cancelled) {
-          setIsLoadingPreview(false);
-        }
+        if (!cancelled) setIsLoadingPreview(false);
       });
 
     return () => {
@@ -110,13 +98,10 @@ export function DriveComparisonPanel({
 
   useEffect(() => {
     return () => {
-      setPreviewUrl((currentUrl) => {
-        if (currentUrl) {
-          URL.revokeObjectURL(currentUrl);
-        }
-
-        return null;
-      });
+      for (const url of pdfCacheRef.current.values()) {
+        URL.revokeObjectURL(url);
+      }
+      pdfCacheRef.current.clear();
     };
   }, []);
 
