@@ -4,6 +4,7 @@ import {
   getDatabaseNotificationSignature,
   monitoredTables,
   subscribeToLocalDatabaseNotifications,
+  tableLabels,
   type DatabaseNotificationEvent,
 } from "../../lib/databaseNotifications";
 import { getSupabaseClient, supabaseConfigError } from "../../lib/supabase";
@@ -21,30 +22,74 @@ interface DatabaseNotification {
   dismissed: boolean;
 }
 
+const BATCH_WINDOW_MS = 1500;
+const BATCH_THRESHOLD = 4;
+
 export function NotificationCenter() {
   const [notifications, setNotifications] = useState<DatabaseNotification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const recentLocalSignaturesRef = useRef(new Map<string, number>());
+  const pendingBatchRef = useRef<DatabaseNotification[]>([]);
+  const batchTimerRef = useRef<number | null>(null);
+
+  function flushBatch() {
+    batchTimerRef.current = null;
+    const batch = pendingBatchRef.current;
+    pendingBatchRef.current = [];
+
+    if (batch.length === 0) return;
+
+    if (batch.length <= BATCH_THRESHOLD) {
+      setNotifications((current) => [...batch, ...current]);
+      return;
+    }
+
+    const tableCounts = batch.reduce<Record<string, number>>((acc, n) => {
+      acc[n.table] = (acc[n.table] ?? 0) + 1;
+      return acc;
+    }, {});
+
+    const tableLines = Object.entries(tableCounts)
+      .map(([table, count]) => `${tableLabels[table as keyof typeof tableLabels] ?? table}: ${count}`)
+      .join(" · ");
+
+    const batchNotification: DatabaseNotification = {
+      id: `batch:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
+      signature: `batch:${Date.now()}`,
+      event: "INSERT",
+      table: "batch",
+      title: `${batch.length} registros ingresados`,
+      message: tableLines,
+      createdAt: new Date().toISOString(),
+      unread: true,
+      dismissed: false,
+    };
+
+    setNotifications((current) => [batchNotification, ...current]);
+  }
+
+  function addNotification(notification: DatabaseNotification) {
+    pendingBatchRef.current.push(notification);
+
+    if (batchTimerRef.current !== null) {
+      window.clearTimeout(batchTimerRef.current);
+    }
+    batchTimerRef.current = window.setTimeout(flushBatch, BATCH_WINDOW_MS);
+  }
 
   function registerLocalSignature(signature: string) {
     const now = Date.now();
-
     recentLocalSignaturesRef.current.set(signature, now);
-
-    for (const [currentSignature, timestamp] of recentLocalSignaturesRef.current.entries()) {
+    for (const [sig, timestamp] of recentLocalSignaturesRef.current.entries()) {
       if (now - timestamp > 10000) {
-        recentLocalSignaturesRef.current.delete(currentSignature);
+        recentLocalSignaturesRef.current.delete(sig);
       }
     }
   }
 
   function shouldSkipRealtimeDuplicate(signature: string) {
     const timestamp = recentLocalSignaturesRef.current.get(signature);
-
-    if (!timestamp) {
-      return false;
-    }
-
+    if (!timestamp) return false;
     return Date.now() - timestamp < 10000;
   }
 
@@ -52,7 +97,7 @@ export function NotificationCenter() {
     const unsubscribeLocal = subscribeToLocalDatabaseNotifications((payload) => {
       const notification = buildDatabaseNotification(payload) as DatabaseNotification;
       registerLocalSignature(notification.signature);
-      setNotifications((current) => [notification, ...current]);
+      addNotification(notification);
     });
 
     if (supabaseConfigError) {
@@ -65,11 +110,7 @@ export function NotificationCenter() {
     for (const table of monitoredTables) {
       channel.on(
         "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table,
-        },
+        { event: "*", schema: "public", table },
         (payload) => {
           const signature = getDatabaseNotificationSignature({
             eventType: payload.eventType as DatabaseNotificationEvent,
@@ -78,20 +119,17 @@ export function NotificationCenter() {
             oldRecord: payload.old as Record<string, unknown>,
           });
 
-          if (shouldSkipRealtimeDuplicate(signature)) {
-            return;
-          }
+          if (shouldSkipRealtimeDuplicate(signature)) return;
 
-          setNotifications((current) => [
+          addNotification(
             buildDatabaseNotification({
               eventType: payload.eventType as DatabaseNotificationEvent,
               table,
               createdAt: payload.commit_timestamp,
               record: payload.new as Record<string, unknown>,
               oldRecord: payload.old as Record<string, unknown>,
-            }),
-            ...current,
-          ]);
+            }) as DatabaseNotification,
+          );
         },
       );
     }
@@ -104,6 +142,9 @@ export function NotificationCenter() {
 
     return () => {
       unsubscribeLocal();
+      if (batchTimerRef.current !== null) {
+        window.clearTimeout(batchTimerRef.current);
+      }
       void supabase.removeChannel(channel);
     };
   }, []);
@@ -116,10 +157,7 @@ export function NotificationCenter() {
   function handleOpenCenter() {
     setIsOpen(true);
     setNotifications((current) =>
-      current.map((notification) => ({
-        ...notification,
-        unread: false,
-      })),
+      current.map((notification) => ({ ...notification, unread: false })),
     );
   }
 
@@ -129,6 +167,10 @@ export function NotificationCenter() {
 
   return (
     <>
+      <button className="button button-secondary notifications-launcher" onClick={handleOpenCenter} type="button">
+        Cambios
+        {unreadCount > 0 ? <span className="notifications-count">{unreadCount}</span> : null}
+      </button>
 
       {isOpen ? (
         <Modal
