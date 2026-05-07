@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ProgramNotesButton } from "../components/common/ProgramNotesButton";
 import { SummaryGrid } from "../components/common/SummaryGrid";
 import { Tabs } from "../components/common/Tabs";
@@ -92,17 +92,26 @@ export function UnidadDetailPage({
   const [isSearchingObjetivos, setIsSearchingObjetivos] = useState(false);
   const [markedObjetivoIds, setMarkedObjetivoIds] = useState<number[]>(() => getMarkedObjectiveIds());
 
-  function getVisibleObjetivos(currentData: UnidadHierarchy | null) {
-    if (!currentData) {
-      return [];
-    }
-
-    if (!objetivoSearchTerm.trim()) {
-      return currentData.objetivos;
-    }
-
+  const visibleObjetivos = useMemo(() => {
+    if (!data) return [];
+    if (!objetivoSearchTerm.trim()) return data.objetivos;
     return objetivoSearchResults ?? [];
-  }
+  }, [data, objetivoSearchTerm, objetivoSearchResults]);
+
+  const indicadoresSeleccionados = useMemo(() => {
+    if (!data || !selectedObjetivoId) return [];
+    return data.indicadores.filter((item) => item.objetivo_aprendizaje_id === selectedObjetivoId);
+  }, [data, selectedObjetivoId]);
+
+  const criteriosSeleccionados = useMemo(() => {
+    if (!data || !selectedEvaluacionId) return [];
+    return data.criterios.filter((item) => item.evaluacion_id === selectedEvaluacionId);
+  }, [data, selectedEvaluacionId]);
+
+  const actividadesSeleccionadas = useMemo(() => {
+    if (!data || !selectedEvaluacionId) return [];
+    return data.actividades.filter((item) => item.evaluacion_id === selectedEvaluacionId);
+  }, [data, selectedEvaluacionId]);
 
   async function loadData() {
     setLoading(true);
@@ -140,7 +149,6 @@ export function UnidadDetailPage({
       return;
     }
 
-    const visibleObjetivos = getVisibleObjetivos(data);
     const firstMarkedObjetivo = visibleObjetivos.find((item) => markedObjetivoIds.includes(item.id));
 
     if (!visibleObjetivos.some((item) => item.id === selectedObjetivoId)) {
@@ -233,7 +241,7 @@ export function UnidadDetailPage({
       case "indicadores_evaluacion":
         return {
           objetivo_aprendizaje_id: selectedObjetivoId,
-          orden_item: getNextNumericValue(getIndicadoresSeleccionados(), "orden_item"),
+          orden_item: getNextNumericValue(indicadoresSeleccionados, "orden_item"),
         };
       case "evaluaciones":
         return {
@@ -243,12 +251,12 @@ export function UnidadDetailPage({
       case "criterios_evaluacion":
         return {
           evaluacion_id: selectedEvaluacionId,
-          orden_item: getNextNumericValue(getCriteriosSeleccionados(), "orden_item"),
+          orden_item: getNextNumericValue(criteriosSeleccionados, "orden_item"),
         };
       case "actividades_evaluacion":
         return {
           evaluacion_id: selectedEvaluacionId,
-          orden_item: getNextNumericValue(getActividadesSeleccionadas(), "orden_item"),
+          orden_item: getNextNumericValue(actividadesSeleccionadas, "orden_item"),
         };
       case "unidad_actitudes":
         return {
@@ -285,37 +293,15 @@ export function UnidadDetailPage({
     }
   }
 
-  function getObjetivoSeleccionado() {
-    return data?.objetivos.find((item) => item.id === selectedObjetivoId) ?? null;
-  }
+  const objetivoSeleccionado = useMemo(
+    () => data?.objetivos.find((item) => item.id === selectedObjetivoId) ?? null,
+    [data, selectedObjetivoId],
+  );
 
-  function getEvaluacionSeleccionada() {
-    return data?.evaluaciones.find((item) => item.id === selectedEvaluacionId) ?? null;
-  }
-
-  function getIndicadoresSeleccionados() {
-    if (!data || !selectedObjetivoId) {
-      return [];
-    }
-
-    return data.indicadores.filter((item) => item.objetivo_aprendizaje_id === selectedObjetivoId);
-  }
-
-  function getCriteriosSeleccionados() {
-    if (!data || !selectedEvaluacionId) {
-      return [];
-    }
-
-    return data.criterios.filter((item) => item.evaluacion_id === selectedEvaluacionId);
-  }
-
-  function getActividadesSeleccionadas() {
-    if (!data || !selectedEvaluacionId) {
-      return [];
-    }
-
-    return data.actividades.filter((item) => item.evaluacion_id === selectedEvaluacionId);
-  }
+  const evaluacionSeleccionada = useMemo(
+    () => data?.evaluaciones.find((item) => item.id === selectedEvaluacionId) ?? null,
+    [data, selectedEvaluacionId],
+  );
 
   function openCreate(entityKey: EntityKey) {
     if (entityKey === "indicadores_evaluacion" && !selectedObjetivoId) {
@@ -452,13 +438,11 @@ export function UnidadDetailPage({
   }
 
   function renderObjetivosSection() {
-    const visibleObjetivos = getVisibleObjetivos(data);
     const markedObjetivoIdSet = new Set(markedObjetivoIds);
     const visibleObjetivosRows = visibleObjetivos.map((objetivo) => ({
       ...objetivo,
       review_marked: markedObjetivoIdSet.has(objetivo.id) ? 1 : 0,
     }));
-    const objetivoSeleccionado = getObjetivoSeleccionado();
     const searchIsActive = objetivoSearchTerm.trim().length > 0;
 
     return (
@@ -558,7 +542,7 @@ export function UnidadDetailPage({
                 ]}
                 emptyMessage="Este objetivo aun no tiene indicadores."
                 entityKey="indicadores_evaluacion"
-                rows={getIndicadoresSeleccionados()}
+                rows={indicadoresSeleccionados}
               />
             </>
           ) : (
@@ -570,7 +554,6 @@ export function UnidadDetailPage({
   }
 
   function renderEvaluacionesSection() {
-    const evaluacionSeleccionada = getEvaluacionSeleccionada();
 
     return (
       <>
@@ -638,7 +621,7 @@ export function UnidadDetailPage({
               ]}
               emptyMessage="No hay criterios para la evaluacion seleccionada."
               entityKey="criterios_evaluacion"
-              rows={getCriteriosSeleccionados()}
+              rows={criteriosSeleccionados}
             />
           </SectionCard>
 
@@ -662,7 +645,7 @@ export function UnidadDetailPage({
               ]}
               emptyMessage="No hay actividades para la evaluacion seleccionada."
               entityKey="actividades_evaluacion"
-              rows={getActividadesSeleccionadas()}
+              rows={actividadesSeleccionadas}
             />
           </SectionCard>
         </div>

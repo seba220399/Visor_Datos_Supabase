@@ -16,7 +16,7 @@
   --primary-strong: #1f5638;
   --danger: #b6412f;
   --info: #315c7f;
-  --shadow: 0 18px 48px rgba(73, 98, 84, 0.12);
+  --shadow: 0 6px 18px rgba(73, 98, 84, 0.12);
 }
 
 * {
@@ -245,7 +245,7 @@ a {
 
 .card {
   background: var(--surface);
-  backdrop-filter: blur(14px);
+  backdrop-filter: blur(4px);
   border: 1px solid rgba(207, 219, 204, 0.9);
   border-radius: 16px;
   box-shadow: var(--shadow);
@@ -255,7 +255,7 @@ a {
 
 .comparison-layout {
   display: grid;
-  grid-template-columns: minmax(860px, 1.7fr) minmax(320px, 0.85fr);
+  grid-template-columns: 1.7fr 0.85fr;
   gap: 0.85rem;
   align-items: start;
 }
@@ -705,7 +705,7 @@ a {
 .pdf-preview-frame {
   display: block;
   width: 100%;
-  min-height: 980px;
+  min-height: clamp(400px, 72vh, 980px);
   border: 0;
   background: #f3f6f2;
 }
@@ -968,7 +968,7 @@ a {
   flex-wrap: wrap;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1150px) {
   .comparison-layout {
     grid-template-columns: 1fr;
   }
@@ -976,7 +976,9 @@ a {
   .comparison-main {
     padding-top: 0;
   }
+}
 
+@media (max-width: 900px) {
   .master-detail-grid {
     grid-template-columns: 1fr;
   }
