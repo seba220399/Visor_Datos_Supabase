@@ -489,14 +489,15 @@ a {
 
 .objective-compact-table th:nth-child(2),
 .objective-compact-table td:nth-child(2) {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  line-height: 1.22;
 }
 
 .objective-compact-table th:last-child,
 .objective-compact-table td:last-child {
-  width: 12.6rem;
+  width: 11.4rem;
 }
 
 .objective-compact-table td:last-child .action-row {
@@ -510,8 +511,8 @@ a {
 
 .objective-compact-table .button-small {
   min-height: 24px;
-  padding: 0.2rem 0.38rem;
-  font-size: 0.76rem;
+  padding: 0.18rem 0.34rem;
+  font-size: 0.74rem;
 }
 
 .table-row-selected {
