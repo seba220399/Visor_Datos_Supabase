@@ -104,7 +104,7 @@ async function getGoogleDriveAccessToken() {
     });
 
     tokenClient?.requestAccessToken({
-      prompt: "consent",
+      prompt: "",
     });
   });
 }
